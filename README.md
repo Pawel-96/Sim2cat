@@ -5,7 +5,7 @@ Simple code for merging partitioned raw data from cosmological simulations and c
 - pynbody
 - h5py, hdf5plugin
 
-Running: **python3 Make_catalogs.py**
+Running: **python3 Sim2cat.py**
 
 
 ## Parameter file:
