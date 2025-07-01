@@ -2,6 +2,7 @@
 import numpy as np
 import h5py
 import hdf5plugin
+import pynbody
 import sys
 import os.path
 
@@ -58,8 +59,8 @@ def Set_H():
 
 def Periodic_boundary(arr):
     for i in range(0,len(arr)):
-        if arr[i]<0: arr[i]+=boxsize
-        if arr[i]>=boxsize: arr[i]-=boxsize
+        if arr[i]<0: arr[i]+=param.boxsize
+        if arr[i]>=param.boxsize: arr[i]-=param.boxsize
     return arr
 
 
@@ -102,23 +103,31 @@ for i in range(0,nmodels):
                 
                 r,v=np.zeros(0),np.zeros(0)
                 
+                #reading data*************************
                 if param.data_format=='hdf5':
                     f=h5py.File(fname,'r')
-                    r=Dset2numpy(f[param.parttype][param.coords_flag])
-                    v=Dset2numpy(f[param.parttype][param.vels_flag])
+                    r=Dset2numpy(f[param.coords_dset])
+                    v=Dset2numpy(f[param.vels_dset])
                     if np.shape(r)[0]==3: #data in hdf5 file is tranpsosed
                         r=r.transpose()
                         v=v.transpose()
-                elif data_format=='ascii':
+                elif param.data_format=='gadget':
+                    f=pynbody.load(fname)
+                    r=np.array(f.dm['pos'])
+                    v=np.array(f.dm['vel'])
+                    if np.shape(r)[0]==3: #data is tranpsosed
+                        r=r.transpose()
+                        v=v.transpose()
+                elif param.data_format=='ascii':
                     r=np.genfromtxt(fname,usecols=(param.cols_r[0],param.cols_r[1],param.cols_r[2]),unpack=True).transpose()
                     v=np.genfromtxt(fname,usecols=(param.cols_v[0],param.cols_v[1],param.cols_v[2]),unpack=True).transpose()
                 else:
                     err=1
-                    print('incorrect parameter: [data_format] :(')
+                    print('incorrect parameter: [data_format], should be hdf5/gadget/ascii')
                     break
                 
-                if pos_units_Mpch!=1: #change units to [Mpc/h]
-                    r*=pos_units_Mpch
+                if param.pos_units_Mpch!=1: #change units to [Mpc/h]
+                    r*=param.pos_units_Mpch
                 
                 #output file for real space
                 fout_BOX=open(param.Fname_out(i,j+1,param.snapshots[k],param.ttype[0]),'a')
@@ -131,15 +140,15 @@ for i in range(0,nmodels):
                     fout_RSDy=open(param.Fname_out(i,j+1+param.nreals,param.snapshots[k],param.ttype[1]),'a')
                     fout_RSDz=open(param.Fname_out(i,j+1+2*param.nreals,param.snapshots[k],param.ttype[1]),'a')
                     
-                    x,y,z=r[:,0],r[:,1],r[:,2]
-                    x_rsd=Periodic_boundary(x+ hval[i]*v[:,0]*(1.+param.zz[k])/Hubble[i,k]) #still Mpc/h units!
-                    y_rsd=Periodic_boundary(y+ hval[i]*v[:,1]*(1.+param.zz[k])/Hubble[i,k]) #still Mpc/h units!
-                    z_rsd=Periodic_boundary(z+ hval[i]*v[:,2]*(1.+param.zz[k])/Hubble[i,k]) #still Mpc/h units!
+                    
+                    x_rsd=Periodic_boundary(r[:,0]+ hval[i]*v[:,0]*(1.+param.zz[k])/Hubble[i,k]) #still Mpc/h units!
+                    y_rsd=Periodic_boundary(r[:,1]+ hval[i]*v[:,1]*(1.+param.zz[k])/Hubble[i,k]) #still Mpc/h units!
+                    z_rsd=Periodic_boundary(r[:,2]+ hval[i]*v[:,2]*(1.+param.zz[k])/Hubble[i,k]) #still Mpc/h units!
                     
                     #saving z-space data:
-                    np.savetxt(fout_RSDx,np.transpose((x_rsd,y,z)), fmt=param.output_precision)
-                    np.savetxt(fout_RSDy,np.transpose((y_rsd,x,z)), fmt=param.output_precision)
-                    np.savetxt(fout_RSDz,np.transpose((z_rsd,y,x)), fmt=param.output_precision)
+                    np.savetxt(fout_RSDx,np.transpose((x_rsd,r[:,1],r[:,2])), fmt=param.output_precision)
+                    np.savetxt(fout_RSDy,np.transpose((y_rsd,r[:,0],r[:,2])), fmt=param.output_precision)
+                    np.savetxt(fout_RSDz,np.transpose((z_rsd,r[:,1],r[:,0])), fmt=param.output_precision)
                     
                     fout_RSDx.close()
                     fout_RSDy.close()

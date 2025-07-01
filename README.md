@@ -2,6 +2,7 @@ Simple code for merging partitioned raw data from cosmological simulations and c
 
 ## Requirements and running:
 - numpy
+- pynbody
 - h5py, hdf5plugin
 
 Running: **python3 Make_catalogs.py**
@@ -12,7 +13,11 @@ File param.py contans code settings.
 
 **models**  
 Array containing names of directories with models, see Fname_in() function.  
-If models=['\*'], code reads entire Data/ directory
+If models=['\*'], code reads entire Data/ directory  
+\[Attention\] Data/ should contain directories with model names that math own-defined Fname_in() format  
+(see below for Fname_in() and Fname_out() descriptions).  
+If Data/ contains only files and models='\*', code will not recognize them correctly.
+In such situation, select models array to correspond with recognizable parts of file names in Data/. 
 
 **Om_M**  
 Array with Omega_Matter values for corresponding models.  
@@ -57,22 +62,19 @@ Flag: [0] - if some files do not exist (check Fname_in() function), raise error;
 Assumed number of all files within data directory (see Fname_in() function) is: len(models) x nreals x nparts x nsnapshots
 
 **data_format**  
-Input data format: \[hdf5/ascii\]
+Input data format: \[hdf5/gadget/ascii\]
 
-**parttype**  
-\[Relevant only if data_format=hdf5\]: name of hdf5 group containing data for catalogs
+**coords_dset**  
+\[Relevant only if data_format=hdf5 or gadget\]: name of dataset containing positions
 
-**coords_flag**  
-\[Relevant only if data_format=hdf5\]: name of hdf5 dataset containing positions
-
-**vels_flag**  
-\[Relevant only if data_format=hdf5\]: name of hdf5 dataset containing velocities (assuming units of [km/s])
+**vels_dset**  
+\[Relevant only if data_format=hdf5 or gadget\]: name of dataset containing velocities (assuming units of [km/s])
 
 **cols_r**  
-\[Relevant only if data_format=ascii\]: number of columns with positions
+\[Relevant only if data_format=ascii\]: number of columns with positions (numbering starts from 0)
 
 **cols_v**  
-\[Relevant only if data_format=ascii\]: number of columns with velocities
+\[Relevant only if data_format=ascii\]: number of columns with velocities (numbering starts from 0)
 
 
 **ttype**  
@@ -85,9 +87,17 @@ Precision of output, e.g. output_precision='%1.4f'
 
 **Fname_in() and Fname_out()**  
 Functions defining naming format of input and output files, corresponding with:  
-model\[nmodel\], nreal (realization), snap (snapshot number), part (part of file, see **nparts** parameter)
+model\[nmodel\], nreal (realization), snap (snapshot number), part (part of file, see **nparts** parameter), vtype (see **ttype**)   
+If something does not apply, set appriopriate number to 1 and ignore it inside Fname_in(), for examle:  
+if there are no realizations distinguished in the data and everything is in one file,  
+set nreals=1, nparts=1, Fname_in(): return 'Data/'+model\[nmodel\]+str(snap)   (or any other format)  
+\[Attention\]: the file names returned by Fname_out() need to have dependence on nreal since this is how z-space
+results along x,y,z axes are being distinguished. For catalog file of realization nreal, z-space catalog realization numbers are:  
+- RSD along x axis: nreal  
+- RSD along y axis: nreal+nreals  
+- RSD along z axis: nreal+2\*nreals  
+Z-space outputs are always rotated to have z-space effect at first column, i.e.: (x_rsd,y,z), (y_rsd,x,z), (z_rsd,y,x)
 
 
 ## Improvements to add:
-- HDF5 outputs (now ascii/hdf5 input, but output only ascii)
-- 
+- HDF5 outputs (now ascii/gadget/hdf5 input, but output  available only in ascii)
